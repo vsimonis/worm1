@@ -31,7 +31,7 @@ class easyCam:
    
     ## Recording Methods    
     def recordVid( self ):
-        with piCamera() as camera: 
+        with picamera.PiCamera() as camera: 
             if self.vidRes or self.vidLen or self.vidName == None:
                 print "Please set a resolution, video length or name"
             
@@ -42,7 +42,7 @@ class easyCam:
                 camera.stop_recording()
 
     def pingImg ( self ):
-        with piCamera() as camera:
+        with picamera.piCamera() as camera:
             camera.resolution = self.vidRes
             camera.start_preview()
             time.sleep(2)
