@@ -9,9 +9,12 @@ from skimage.measure import regionprops
 import numpy as np
 
 class imgProc:
-      def __init__():
-            
-      def applyThresh( self, imgIn, t ):
+      
+      def __init__(self):
+            pass
+
+      @staticmethod
+      def applyThresh( imgIn, t ):
             imgIn1 = imgIn.ravel()
             imgOut = np.zeros( ( np.shape(imgIn) ) ).ravel()
             inds = np.arange( len(imgIn1) )[imgIn1 > t]
@@ -20,32 +23,34 @@ class imgProc:
                   imgOut = np.reshape( imgOut, np.shape(imgIn) )
             return imgOut
       
-      def threshHist( self, imgIn ):
+      @staticmethod
+      def threshHist( imgIn ):
             imgIn1 = imgIn.ravel()
             imgOut = np.zeros( (np.shape(imgIn) ) ).ravel()
             # Histogram analysis to find maximum peak and associated gl
             pxCnt, gL = exposure.histogram( imgIn )
-            indMaxBG = np.arange( len(imgIn1) )[pixCnt == max(pixCnt)]
+            indMaxBG = np.arange( len(imgIn1) )[pxCnt == max(pxCnt)]
             BGlevel = gL[indMaxBG]
             
             # Nearest min below this max is threshold
             
             d1 = np.zeros( np.shape(pxCnt) )
             
-            for i in range( 2 , len(pixCnt) - 1):
+            for i in range( 2 , len(pxCnt) - 1):
                   # derivative approximation
                   d1[i] = pxCnt[ i + 1 ] - pxCnt[ i ]
             
             i = 1
+            p = 0
             while ( d1[ indMaxBG ] > 0):
                   p = indMaxBG - i
                   i = i + 1
             t = gL[ p ]
-            imgOut = self.applyThresh( imgIn, t ) 
+            imgOut = imgProc.applyThresh( imgIn, t ) 
             return imgOut
       
-            
-      def threshAUHist( self, imgIn, avg, sd ):
+      @staticmethod            
+      def threshAUHist( imgIn, avg, sd ):
             pxCnt, gL = exposure.histogram( imgIn )
             auh = 0
             gli = 0 #index into pxCnt and gL
@@ -55,10 +60,11 @@ class imgProc:
                 gli += 1
                 t = gL[gli-1]
           
-            imgOut = applyThresh( imgIn, t )
+            imgOut = imgProc.applyThresh( imgIn, t )
             return imgOut
 
-      def morphOps( self, imgIn, sizeSE ):
+      @staticmethod
+      def morphOps( imgIn, sizeSE ):
             imgOut = util.img_as_bool( imgIn ) #boolean image
             imgOut = ~imgOut #img negative
             imgOut = morphology.remove_small_objects( imgOut, 2000 ) #cclargest
@@ -66,16 +72,18 @@ class imgProc:
             imgOut = morphology.closing(imgOut, SE)
             return imgOut
 
-      def getCentroid( self, imgIn ):
+      @staticmethod
+      def getCentroid( imgIn ):
             imgInL = morphology.label( imgIn )
             regions = regionprops( imgInL )
             y,x = regions[0]['Centroid']
             return x, y
-      
-      def getCentroidFromRaw( self, imgIn ):
+
+      @staticmethod
+      def getCentroidFromRaw( imgIn ):
             imgOut = color.rgb2gray( imgIn )
-            imgOut = self.threshHist( imgOut )
-            x, y = self.getCentroid
+            imgOut = imgProc.threshHist( imgOut )
+            x, y = imgProc.getCentroid( imgOut )
             return x, y
 ## Sample run   
 #J = threshAUHist(I, 4223, 19)
