@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import serial
+import pyserial
 import time
 import eggbot_scanlinux
 
@@ -44,7 +44,7 @@ class easyEBB:
         NOTE: need to close this serial port
         '''
         try:
-            serialPort = serial.Serial( strComPort, timeout = 1 )
+            serialPort = pyserial.Serial( strComPort, timeout = 1 )
         
             serialPort.setRTS()
             serialPort.setDTR()
@@ -60,7 +60,7 @@ class easyEBB:
                 return serialPort
             serialPort.close()
         
-        except serial.SerialException:
+        except pyserial.SerialException:
             pass
 
         return None
