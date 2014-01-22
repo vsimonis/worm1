@@ -5,8 +5,8 @@ class easyCam:
     def __init__( self ):
         self.vidRes = None    #(x, y) tuple
         self.frameRate = None   #frames per second
-        self.capFreq = None #images per minute
-        self.vidLen = None #expressed in minutes
+        self.capFreq = None #images per second
+        self.vidLen = None #expressed in seconds
 
     ## Set parameters for video capture
     # Resolution
@@ -15,6 +15,7 @@ class easyCam:
     
     def setVidLen( self, vidLength ):
         self.vidLen = vidLength
+        print "set vidLen: %d" % self.vidLen
 
     # Frame Rate    
     def setFrameRate( self, fRate ):
@@ -27,28 +28,48 @@ class easyCam:
     # Capture frequency expressed in image queries per min
     def setCapFreq( self, freq):
         self.capFreq = freq
-    
+        print "set capFreq: %d" % self.capFreq
    
     ## Recording Methods    
     def recordVid( self ):
         with picamera.PiCamera() as camera: 
-            if self.vidRes or self.vidLen or self.vidName == None:
-                print "Please set a resolution, video length or name"
-            
+            if self.vidRes == None:
+                print 'set vidRes'
+            if self.vidLen == None:
+                print 'set vidLen'
+            if self.vidName == None:
+                print 'set vidName'            
             else :
                 camera.resolution = self.vidRes
+                camera.framerate = self.frameRate
                 camera.start_recording( '%s.h264' % self.vidName )
                 camera.wait_recording( self.vidLen * 60 )
                 camera.stop_recording()
 
     def pingImg ( self ):
-        with picamera.piCamera() as camera:
+        with picamera.PiCamera() as camera:
             camera.resolution = self.vidRes
             camera.start_preview()
             time.sleep(2)
-            camera.capture('%s.jpg' % str( datetime.now() ))
+            camera.capture('\pics\%s.jpg' % str( datetime.now() ))
 
 
-
- 
+    def recordVidCapStills ( self ):
+        nCap = self.vidLen * self.capFreq
+        print "vid Len Still: %d" % self.vidLen
+        print "capFreq Still: %d" % self.capFreq
+        print "nCap: %d" % nCap
+        with picamera.PiCamera() as camera:
+            camera.resolution = self.vidRes
+            camera.framerate = self.frameRate
+            camera.start_preview()
+            camera.start_recording( '%s.h264' % self.vidName )
+            i = 0
+            while i < nCap - 1:             
+                print i
+                camera.wait_recording(self.vidLen // nCap)
+                camera.capture('\pics\%s.jpg' % str( datetime.now() ), use_video_port = True)
+                i += 1
+            camera.wait_recording( self.vidLen // nCap)
+            camera.stop_recording()
     

@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 from easyEBB import easyEBB
 
 e = easyEBB()
