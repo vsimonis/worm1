@@ -1,4 +1,9 @@
-#!/usr/bin/python
+"""
+Class containing methods to open, close and test serial connection
+to EiBotBoard as well as methods to send commands to the motors
+
+
+"""
 
 import serial
 import time
@@ -10,11 +15,17 @@ class easyEBB:
         self.openSerial()
 
     def openSerial( self ):
+        """
+        Opens a serial connection to the EiBotBoard
+        """
         self.serialPort = self.getSerialPort()
         if self.serialPort == None:
             print "Unable to find serial port"
 
     def closeSerial( self ):
+        """
+        Closes the serial connection to the EiBotBoard
+        """
         try: 
             if self.serialPort:
                 self.serialPort.flush()
@@ -24,6 +35,9 @@ class easyEBB:
             return
 
     def getSerialPort( self ):
+        """
+        Returns details of the serial connection
+        """
         #try to connect to EBB devices
         for strComPort in eggbot_scanlinux.findEiBotBoards():
             serialPort = self.testSerialPort( strComPort )
@@ -39,10 +53,10 @@ class easyEBB:
                 return serialPort
 
     def testSerialPort( self, strComPort ):
-        '''
-        Return a SerialPort object for port with EBB
-        NOTE: need to close this serial port
-        '''
+        """
+        Return a serial connection to the EiBotBoard
+        Note: Need to close serial connection
+        """
         try:
             serialPort = serial.Serial( strComPort, timeout = 1 )
         
@@ -66,6 +80,9 @@ class easyEBB:
         return None
 
     def doCommand(self, cmd):
+        """
+        Sends a string command to EiBotBoard
+        """
         try:
             self.serialPort.write( cmd ) 
             response = self.serialPort.readlines()
@@ -78,12 +95,27 @@ class easyEBB:
 
 
     def disableMotors(self):
+        """
+        Disables both motors on EiBotBoard
+        """
         self.doCommand('EM,0,0\r')
     
     def enableMotors(self):
+        """
+        Disables both motors on EiBotBoard
+        """
         self.doCommand('EM,1,1\r')
         
     def stepM(self, duration, x, y):
+        """
+        Sends command to motor control board
+        Enables motors before sending and disables after 
+        
+        arguments
+        duration -- time to complete movement (in ms)
+        x -- number of steps for movement in x direction (+ or -)
+        y -- number of steps for movement in y direction (+ or -)
+        """
         self.enableMotors()
         self.doCommand('SM,%d,%d,%d\r' %(duration, x, y))
         self.disableMotors()

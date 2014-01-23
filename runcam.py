@@ -8,5 +8,6 @@ c.setVidLen(20) #in secs
 c.setVidName('test')
 c.setFrameRate(10) #in fps
 c.setCapFreq(1) #in fps
+c.setQuant(23)
 
 c.recordVidCapStills()
