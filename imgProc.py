@@ -9,9 +9,9 @@ from skimage.measure import regionprops
 import numpy as np
 
 class imgProc:
-    def __init__(self):
+    def __init__(self, imgIn):
         pass
-
+    
     @staticmethod
     def applyThresh( imgIn, t ):
         imgIn1 = imgIn.ravel()
@@ -26,7 +26,7 @@ class imgProc:
     def threshHist(imgIn):
         
         imgIn1 = imgIn.ravel()
-        #imgOut = np.zeros( (np.shape(imgIn) ) ).ravel()
+        
         # Histogram analysis to find maximum peak and associated gl
         pxCnt, gL = exposure.histogram( imgIn )
         indMaxBG = int(np.arange( len(imgIn1) )[pxCnt == pxCnt.max()]) #int()
@@ -96,7 +96,7 @@ class imgProc:
         imgOut = imgProc.threshHist( imgOut )
         imgOut = imgProc.morphOps( imgOut, 3)
         x, y = imgProc.getCentroid( imgOut )
-        return x, y
+        return x, y, imgOut
     
     @staticmethod
     def minmaxx( imgIn ):

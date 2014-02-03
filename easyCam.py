@@ -36,7 +36,7 @@ class easyCam:
 
     ## Set parameters for query images sent to image processor
     # Capture frequency expressed in image queries per min
-    def setCapFreq( self, freq):
+    def setSampleRate( self, freq):
         self.sampleRate = freq
         print "set sampleRate: %d" % self.sampleRate
    
@@ -96,50 +96,42 @@ class easyCam:
             camera.start_recording( stream, self.quant)
             camera.wait_recording( self.vidLen )
             camera.stop_recording()
-            
+           
     def threadStream( self ):
- #       nCap = self.vidLen * self.sampleRate
-
+        capInterval = float(1)/self.sampleRate
+        print "Cap Interval %d" % capInterval
         with picamera.PiCamera() as camera:
             camera.resolution = self.vidRes
             camera.framerate = self.frameRate
             stream = picamera.PiCameraCircularIO(camera, seconds = 10)
+#            camera.start_preview()
+            print "ready ready"
+            time.sleep(2)
             camera.start_recording(stream, format = 'h264')
-            camera.start_preview()
-            print ('<w> to write')
-            print ('<q> to stop recording')
-            while camera.recording:
-                while True:
-                    camera.wait_recording(0.5)
-                    r, w, x = select([sys.stdin],[],[],0.5)
-                    if r: 
-                        break
-                c = input()
-                if c == 'q':
-                    print('EXITING')
-                    camera.stop_recording()
-                elif c == 'w':
-                    print('Writing to %s' % self.vidName)
- #           i = 0
- #           while i < nCap - 1:             
- #               print i
- #               camera.wait_recording(self.vidLen // nCap)
-                    with stream.lock:
-                        for frame in stream.frames:
-                            if frame.header:
-                                stream.seek(frame.position)
- #                           print 'img'
-                                break
- #               i += 1
-                        with io.open( '%s.h264' % self.vidName, 'wb' ) as output:
-                            while True:
-                                buf = stream.read1()
-                                if not buf:
-                                    break
-                                output.write(buf)
-                    print('Done')
-                else:
-                    print('unrecognized input')
- #           camera.wait_recording( self.vidLen // nCap)
- #           camera.stop_recording()
+            startT = time.time()
+            print "Start %f" % startT                
+
+            lastCheck = startT - capInterval
+
+            while now - startT >= self.vidLen:
+                now = time.time()
+                if now - lastCheck >= capInterval:      
+                lastCheck = time.time()
+                with stream.lock:
+                    for frame in stream.frames:
+                        if frame.header:
+                            toAnalyze = stream.seek(frame.position)
+                            break
+
+                    with io.open( '%s.h264' % self.vidName, 'wb' ) as output:
+                        while True:
+                        buf = stream.read1()
+                        if not buf:
+                            break
+                            output.write(buf)
+            print ("Elapsed: %f") % (now - startT)
+            print('EXITING')
+            camera.stop_recording()
+            
+
                 
