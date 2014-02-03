@@ -17,7 +17,7 @@ class ImageProcessor(threading.Thread):
         self.stream = io.BytesIO()
         self.event = threading.Event()
         self.terminated = False
-        self.start()
+        self.run()
 
     def run(self):
         # separate thread
@@ -61,18 +61,19 @@ def write_vid(stream):
 
 with picamera.PiCamera() as camera:
     pool = [ImageProcessor() for i in range (4)]
-    #camera.resolution = #set resolution
-    #camera.framerate = #set framerate
+    camera.resolution = (1080,1080) #set resolution
+    camera.framerate = 15 #set framerate
         
     camera.start_preview()
     time.sleep(2)
-    camera.capture(streams(), format = 'h264')
+    strm = streams()
+    camera.capture(strm, format='jpeg')
     try: 
         while True: 
             camera.wait_recording(1)
             if write_now():
                 camera.wait_recording(10)
-                write_vid(stream)
+                write_vid(strm)
     finally:
         camera.stop_recording()
         
