@@ -67,7 +67,7 @@ with picamera.PiCamera() as camera:
     camera.start_preview()
     time.sleep(2)
     strm = streams()
-    camera.capture(strm, format='jpeg')
+    camera.start_recording(strm, format='jpeg')
     try: 
         while True: 
             camera.wait_recording(1)

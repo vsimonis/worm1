@@ -104,7 +104,7 @@ class easyCam:
             camera.resolution = self.vidRes
             camera.framerate = self.frameRate
             stream = picamera.PiCameraCircularIO(camera, seconds = 10)
-#            camera.start_preview()
+            camera.start_preview()
             print "ready ready"
             time.sleep(2)
             camera.start_recording(stream, format = 'h264')
@@ -112,23 +112,25 @@ class easyCam:
             print "Start %f" % startT                
 
             lastCheck = startT - capInterval
-
-            while now - startT >= self.vidLen:
+            now = time.time()
+            while now - startT <= self.vidLen:
                 now = time.time()
                 if now - lastCheck >= capInterval:      
-                lastCheck = time.time()
-                with stream.lock:
-                    for frame in stream.frames:
-                        if frame.header:
-                            toAnalyze = stream.seek(frame.position)
-                            break
+                    lastCheck = time.time()
+                    with stream.lock:
+                        for frame in stream.frames:
+                            if frame.header:
+                                toAnalyze = stream.seek(frame.position)
+                                break
 
-                    with io.open( '%s.h264' % self.vidName, 'wb' ) as output:
-                        while True:
-                        buf = stream.read1()
-                        if not buf:
-                            break
-                            output.write(buf)
+ 
+                       with io.open( '%s.h264' % self.vidName, 'wb' ) as output:
+                           
+#                            while True:
+#                                buf = stream.read1()
+#                                if not buf:
+#                                    break
+#                                output.write(buf)
             print ("Elapsed: %f") % (now - startT)
             print('EXITING')
             camera.stop_recording()
