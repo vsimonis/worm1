@@ -6,7 +6,7 @@ import picamera
 from skimage import io as skio
 from skimage import color
 import numpy as np
-import threading
+#import threading
 from easyEBB import easyEBB
 
 DURATION = 1000; #in ms
@@ -15,14 +15,16 @@ STEPY = 1/100 #pixels per step
 BOUNDX = 200; #pixels
 BOUNDY = 200; #pixels
 VIDLEN = 20; #in sec
-PING = 1; #in sex
+PING = 0.5; #in sec
+WINDOW = 10; #number of frames to average
 
+ebb = easyEBB() 
 
-def get_frame(stream):
-    for frame in stream.frames:
-        if frame.header:
-            stream.seek(frame.position)
-        return (frame.frame_size, frame.position)
+#def get_frame(stream):
+#    for frame in stream.frames:
+#        if frame.header:
+#            stream.seek(frame.position)
+#        return (frame.frame_size, frame.position)
 
 def write_video( stream, img ):
     print ('writing video')
@@ -42,10 +44,11 @@ def write_video( stream, img ):
         #img = Image.open(stream.read1(frame.frame_size)) 
         #x, y = imgProc.getCentroidFromRaw(img)
         #print "x: %d\ty: %d"%(x,y)
+
 def move(ebb, xx, yy):
     ebb.stepM(DURATION, xx*STEPX, yy*STEPY)
 ### RUNNING PARTS
-ebb = new easyEBB() 
+
 with picamera.PiCamera() as camera:
     stream = picamera.PiCameraCircularIO(camera, seconds = 20)
     stream2 = io.BytesIO()
@@ -69,7 +72,7 @@ with picamera.PiCamera() as camera:
                 img = color.rgb2gray(skio.imread(stream2))
                 if ref == 0:
                     ref = img;
-                    xr, yr = ref[ref == max(max(sub))]
+                    xr, yr = ref[ref == min(min(ref))]
                 else:
                     sub = img - ref
                     x,y = sub[sub == max(max(sub))]
@@ -88,4 +91,4 @@ with picamera.PiCamera() as camera:
                 write_video(stream, img)
     finally:
         camera.stop_recording()
-    
+        ebb.closeSerial()
