@@ -71,7 +71,9 @@ with picamera.PiCamera() as camera:
                     mx = np.mean(xds)
                     my = np.mean(yds)
                     if abs(mx) > 200 or abs(my) > 200:
-                        move(mx, my)
+                        #move(mx, my)
+                        print mx
+                        print my
                         ref = 0;
                 write_video(stream, img)
     finally:
