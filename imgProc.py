@@ -94,7 +94,7 @@ class imgProc:
     def getCentroidFromRaw( imgIn ):
         imgOut = color.rgb2grey( imgIn )
         imgOut = imgProc.threshHist( imgOut )
-        imgOut = imgProc.morphOps( imgOut, 3)
+        imgOut = imgProc.morphOps( imgOut, 3, 200)
         x, y = imgProc.getCentroid( imgOut )
         return x, y, imgOut
     
