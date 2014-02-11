@@ -21,7 +21,7 @@ BOUNDY = 200; #pixels
 VIDLEN = 20; #in sec
 PING = 0.5; #in sec
 WINDOW = 10; #number of frames to average
-
+V = True;
 ebb = easyEBB() 
 
 def tic():
@@ -67,6 +67,7 @@ with picamera.PiCamera() as camera:
     stream = picamera.PiCameraCircularIO(camera, seconds = 20)
     stream2 = io.BytesIO()
     camera.start_recording(stream, format='h264')
+    camera.start_preview()
     startT = time.time() # start time
     lastCheck = startT - PING # artificial last check
     now = startT
@@ -83,26 +84,40 @@ with picamera.PiCamera() as camera:
                 lastCheck = time.time()
                 camera.capture(stream2, format='jpeg', use_video_port = True)
                 stream2.seek(0)
-                img = rgb2grayV(skio.imread(stream2)) #Valerie's rgb2gray
+                if V: print '1. rgb2gray'
+                img = rgb2grayV(skio.imread(stream2)).astype(float) #Valerie's rgb2gray
                 if np.size(ref) == 1: #maybe use shape instead??? 
+                    if V: print '2.A ref img'
                     ref = img;
                     ### Maybe find this centroid here??? 
-else: ## Image subtraction
-                sub = img - ref.astype(float)
-                x, y = np.nonzero(sub == np.max(sub))
-                xr, yr = np.nonzero(sub == np.min(sub))  
-                xds.append(x[0] - xr[0] )
-                yds.append(y[0] - yr[0] )
-                if (len(xds) > WINDOW):
-                    xds.pop(0)
-                    yds.pop(0)
-                mx = np.mean(xds)
-                my = np.mean(yds)
-                if abs(mx) > BOUNDX or abs(my) > BOUNDY:
-                    move(ebb, mx, my)
-                    print mx
-                    print my
-                    ref = None;
+                else: ## Image subtraction
+                    if V: print '2.1B sub img'
+                    sub = img - ref.astype(float)
+                    if V: print '2.2B find max'
+                    x, y = np.nonzero(sub == np.max(sub))
+                    if V: print '2.3B find min'
+                    xr, yr = np.nonzero(sub == np.min(sub))  
+                    if V: print '2.4B append dist x'
+                    xds.append(x[0] - xr[0] )
+                    if V: print '2.5B append dist y'
+                    yds.append(y[0] - yr[0] )
+
+                    if (len(xds) > WINDOW):
+                        if V: print '2.6BB1 pop dist x'
+                        xds.pop(0)
+                        if V: print '2.6BB2 pop dist y'
+                        yds.pop(0)
+                    if V: print '2.6B mean dist x'
+                    mx = np.mean(xds)
+                    if V: print '2.7B mean dist y'
+                    my = np.mean(yds)
+                    print 'x: %d y: %d' % (x, y)
+                    print 'xr: %d yr: %d' % (xr, yr)
+                    if abs(mx) > BOUNDX or abs(my) > BOUNDY:
+                        print 'move'
+                        move(ebb, mx, my)
+                        print 'mx: %d my:%d' % ( mx, my ) 
+                        ref = None;
                 write_video(stream, img)
     finally:
         camera.stop_recording()
