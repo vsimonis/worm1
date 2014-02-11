@@ -101,7 +101,7 @@ with picamera.PiCamera() as camera:
                     xds.append(x[0] - xr[0] )
                     if V: print '2.5B append dist y'
                     yds.append(y[0] - yr[0] )
-
+                    print len(xds)
                     if (len(xds) > WINDOW):
                         if V: print '2.6BB1 pop dist x'
                         xds.pop(0)
