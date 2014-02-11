@@ -13,6 +13,8 @@ import sys
 import threading
 from easyEBB import easyEBB
 
+RES = (1080, 1080)
+FRAMERATE = 25 #in fps
 DURATION = 1000; #in ms
 STEPX = 1/100 #pixels per step
 STEPY = 1/100 #pixels per step
@@ -40,19 +42,19 @@ def rgb2grayV(I):
         print "Not a 3-D array"
         return
 
-def write_video( stream, img ):
-    print ('writing video')
-    #stream2 = io.BytesIO()
-    with stream.lock:
-        #(ksize, kpos) = get_frame(stream)# Find keyframe
-        for frame in stream.frames:
-            if frame.header: #is keyframe
-                stream.seek(frame.position)
-                break
-         
-        # write rest of stream to disk
-        with io.open('test1.h264','wb') as output:
-            output.write(stream.read())
+#def write_video( stream, img ):
+#    print ('writing video')
+#    #stream2 = io.BytesIO()
+#    with stream.lock:
+#        #(ksize, kpos) = get_frame(stream)# Find keyframe
+#        for frame in stream.frames:
+#            if frame.header: #is keyframe
+#                stream.seek(frame.position)
+#                break
+#         
+#        # write rest of stream to disk
+#        with io.open('test1.h264','wb') as output:
+#            output.write(stream.read())
         
         # process
         #img = Image.open(stream.read1(frame.frame_size)) 
@@ -64,9 +66,11 @@ def move(ebb, xx, yy):
 ### RUNNING PARTS
 
 with picamera.PiCamera() as camera:
-    stream = picamera.PiCameraCircularIO(camera, seconds = 20)
+#    stream = picamera.PiCameraCircularIO(camera, seconds = 20)
     stream2 = io.BytesIO()
-    camera.start_recording(stream, format='h264')
+    camera.framerate = FRAMERATE
+    camera.resolution = RES
+    camera.start_recording('test-DPU.h264')
     camera.start_preview()
     startT = time.time() # start time
     lastCheck = startT - PING # artificial last check
@@ -118,7 +122,7 @@ with picamera.PiCamera() as camera:
                         move(ebb, mx, my)
                         print 'mx: %d my:%d' % ( mx, my ) 
                         ref = None;
-                write_video(stream, img)
+#                write_video(stream, img)
     finally:
         camera.stop_recording()
         ebb.closeSerial()
