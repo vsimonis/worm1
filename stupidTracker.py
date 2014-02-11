@@ -111,8 +111,8 @@ with picamera.PiCamera() as camera:
                     mx = np.mean(xds)
                     if V: print '2.7B mean dist y'
                     my = np.mean(yds)
-                    print 'x: %d y: %d' % (x, y)
-                    print 'xr: %d yr: %d' % (xr, yr)
+                    print 'x: %d y: %d' % (x[0], y[0])
+                    print 'xr: %d yr: %d' % (xr[0], yr[0])
                     if abs(mx) > BOUNDX or abs(my) > BOUNDY:
                         print 'move'
                         move(ebb, mx, my)
