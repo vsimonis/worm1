@@ -63,6 +63,9 @@ TODO: sampling var, but realistically RPi won't be able to do this fast enough f
 def findWorm(threadName, camObj):
     # Keep doing this until VIDEO is DONE
     ref = None
+    rowdist = []
+    coldist = []
+
     while time.time() - START <= 20: #!EXITF :     
         
         if exitFlag:
@@ -128,7 +131,7 @@ def writeVid(threadName, stream, delay):
                     break
 
         with io.open(VIDNAME, 'wb') as output:
-            print '%s\t%s\t past io.open' % threadName
+            print '%s\t%s\t past io.open' % ( time.ctime ( time.time() ), threadName )
             output.write( stream.read() )
             print '%s\t%s\tpast io write' % ( time.ctime( time.time() ), threadName )
         
