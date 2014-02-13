@@ -18,7 +18,7 @@ exitFlag = 0
 
 ## Worm-finding
 WINDOW = 10
-VIDLEN = 30
+VIDLEN = 120
 VIDNAME = 'mttest1.h264' 
 BOUNDROW = 200
 BOUNDCOL = 200
@@ -27,15 +27,16 @@ BOUNDCOL = 200
 Runs the worm thread
 '''
 class wormThread ( threading.Thread ):
-    def __init__( self, threadID, name, cameraObj ):
+    def __init__( self, threadID, name, picStream ):
         threading.Thread.__init__( self )
         self.threadID = threadID
         self.name = name
-        self.cameraObj = cameraObj
+        #self.picStream = picStream
+        self.camera = picStream
 
     def run( self ):
         print '%s\t%s\tStarting' % ( time.ctime(time.time()), self.name )
-        findWorm( self.name, self.cameraObj )
+        findWorm( self.name, self.camera )
         print '%s\t%s\tExiting' % ( time.ctime(time.time()), self.name )
         
 
@@ -60,33 +61,38 @@ TODO: Optimization
 TODO: sampling var, but realistically RPi won't be able to do this fast enough for us to specify this unless it's > 3 seconds
 '''
 
-def findWorm(threadName, camObj):
+def findWorm(threadName, stream):
     # Keep doing this until VIDEO is DONE
     ref = None
+    colr = None
     rowdist = []
     coldist = []
 
+    
     while time.time() - START <= 20: #!EXITF :     
         
         if exitFlag:
             thread.exit()
         
         # Capture image from cameraObj
-        picStream = io.BytesIO()
-        print '%s\t%s\tpicStream' % ( time.ctime( time.time() ), threadName )
-        camObj.capture( picStream, format = 'jpeg', use_video_port = True )
-        print '%s\tpast cam obj' % ( time.ctime( time.time() ), threadName )
+        #        picStream = io.BytesIO()
+        #        print '%s\t%s\tpicStream' % ( time.ctime( time.time() ), threadName )
+        #        camObj.capture( picStream, format = 'jpeg', use_video_port = True )
+        #        print '%s\tpast cam obj' % ( time.ctime( time.time() ), threadName )
+        streamLock.acquire()
         stream.seek(0)
         
         if ref is None: #then camera has moved or we just got started
+            
             if V: "New Reference frame acquired"
-            ref = rgb2grayV( Image.open( stream ) ).astype(float) #get image, mk gray, as float
-        
+            #print stream
+            ref = rgb2grayV( Image.open( stream ) )#.astype(float) #get image, mk gray, as float
+            streamLock.release()
         else: #we already have a reference!
             if V: "New Comparison frame acquired"
-            comp = rgb2grayV( Image.open( stream ) ).astype(float)
+            comp = rgb2grayV( Image.open( stream ) )#.astype(float)
             sub = comp - ref
-            
+            streamLock.release()
             #Find the maximum gray scale values -- corresponds to COMPARISON WORM (note: returns an array)
             col, row = np.nonzero( sub == sub.max() )
             
@@ -114,9 +120,9 @@ def findWorm(threadName, camObj):
                 ref = None; #triggers getting new reference image
                 colr = None; #triggers getting new reference row/col position
             
-                
-
-
+    #finally:
+     #   print 'have worm'
+'''
 def writeVid(threadName, stream, delay):
     while time.time() - START <= VIDLEN:
         print '%s\t%s\twriting vid' % ( time.ctime( time.time() ), threadName )
@@ -139,31 +145,41 @@ def writeVid(threadName, stream, delay):
         time.sleep(delay)
                
     exitFlag = 1
-
+'''
+#def capFrames(threadName, stream, delay):
+#    while time.time() <= VIDLEN:
+        
 
 ### Helper helpers
 def rgb2grayV(I):
+    I = np.array(I) 
     I = I.astype( float )
     return 1.0/3 * ( I[:,:,0] + I[:,:,1] + I[:,:,2] )
     
 
 
 ### Actual main method
-
+streamLock = threading.Lock()
 with picamera.PiCamera() as camera:
+
     camera.resolution = (1080, 1080)
     camera.framerate = 25
+    camera.start_recording('test.h264')
+        # Capture image from cameraObj
+    picStream = io.BytesIO()
+#    print '%s\t%s\tpicStream' % ( time.ctime( time.time() ), threadName )
 
-    stream = picamera.PiCameraCircularIO( camera, seconds = 10 )
-    camera.start_preview()
+    camera.capture( picStream, format = 'jpeg', use_video_port = True )    
+    wormT = wormThread(1, 'wormworm',  picStream  ) 
+    try:
+        
+        wormT.start()
+        while time.time() - START < VIDLEN:
+            camera.capture( picStream, format = 'jpeg', use_video_port = True )
+            time.sleep(2)
+    except Exception as e:
+        print str(e)
+ 
+    finally:
+        camera.stop_recording()
     
-    print 'start recording'
-    camera.start_recording( stream, format = 'h264' )
-
-    wormT = wormThread(1, 'wormworm',  camera ) 
-    writeT = writeThread(2, 'writewrite', stream, 5)
-
-    wormT.start()
-    writeT.start()
-    
-    camera.stop_recording()
