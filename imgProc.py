@@ -81,13 +81,13 @@ class imgProc:
         return x, y
 
     @staticmethod
-    def cropBorder( imgIn, top, right, bottom, left, border_y):
-        lx, ly = imgIn.shape
-        xmin = border_x
-        xmax = lx - border_x
-        ymin = border_y
-        ymax = ly - border_y
-        imgOut = imgIn[ymin:ymax, xmin:xmax]
+    def cropBorder( imgIn, top, right, bottom, left):
+        lc, lr = imgIn.shape
+        cmin = left
+        cmax = lc - right
+        rmin = top
+        rmax = lr - bottom
+        imgOut = imgIn[rmin:rmax, cmin:cmax]
         return imgOut
     
     @staticmethod
