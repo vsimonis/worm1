@@ -6,19 +6,23 @@ import io #for streams
 from PIL import Image #for reading in images
 import numpy as np #for matrix maths
 import picamera #connexion to camera
+import matplotlib.pyplot as plt
+import random 
 
 
 ### Wouldn't be a Valerie program unless I had allllllll these globals :)
 ## General
 V = True #If true, tons of print statements
+P = False #If true, display matplotlib plots, need to be running startX
+
 START = time.time()
 
-## Threading
-exitFlag = 0
+VIDLEN = 10
+VIDRES = (1080,1080)
+VIDFR = 25
 
 ## Worm-finding
 WINDOW = 10
-VIDLEN = 120
 VIDNAME = 'mttest1.h264' 
 BOUNDROW = 200
 BOUNDCOL = 200
@@ -26,33 +30,60 @@ BOUNDCOL = 200
 '''
 Runs the worm thread
 '''
-class wormThread ( threading.Thread ):
-    def __init__( self, threadID, name, picStream ):
+
+class stillThread ( threading.Thread ):
+    def __init__( self, threadID, name, camera ):
         threading.Thread.__init__( self )
         self.threadID = threadID
         self.name = name
-        #self.picStream = picStream
-        self.camera = picStream
+        self.camera = camera
 
     def run( self ):
-        print '%s\t%s\tStarting' % ( time.ctime(time.time()), self.name )
-        findWorm( self.name, self.camera )
-        print '%s\t%s\tExiting' % ( time.ctime(time.time()), self.name )
+        print '%s\t%s\tStarting' %  ( time.ctime( time.time() ) , self.name )
+        findWorm ( self.name, self.camera )
+        print '%s\t%s\tExiting' %  ( time.ctime( time.time() ) , self.name )
         
 
-class writeThread ( threading.Thread ):
-    def __init__( self, threadID, name, stream, delay ):
+class videoThread ( threading.Thread ):
+    def __init__( self, threadID, name, camera ):
         threading.Thread.__init__( self )
         self.threadID = threadID
         self.name = name
-        self.stream = stream
-        self.delay = delay
-
+        self.camera = camera
+        
     def run( self ):
-        print '%s\t%s\tStarting' % ( time.ctime(time.time()), self.name )
-        writeVid( self.name, self.stream, self.delay )
-        print '%s\t%s\tExiting' % ( time.ctime(time.time()), self.name )
+        print '%s\t%s\tStarting' %  ( time.ctime( time.time() ) , self.name )
+        recordVideo( self.name, self.camera )
+        print '%s\t%s\tExiting' %  ( time.ctime( time.time() ) , self.name )
+        
+def write_video ( threadName, vidStream ):   
+    with vidStream.lock:
+        for frame in vidStream.frames:
+            if frame.header:
+                vidStream.seek(frame.position)
+                break
+        print '%s\t%s\twriting' %  ( time.ctime( time.time() ) , threadName )
+        with io.open(VIDNAME, 'wb') as output:
+            output.write( vidStream.read() )
 
+def write_now( ):
+    return random.randint(0,10) == 0
+
+def recordVideo ( threadName, camera ):
+    start = time.time()
+    print '%s\t%s\tCamera\t%s' %  ( time.ctime( time.time() ) , threadName, str(camera) )
+    camera.start_preview()
+    vidStream = picamera.PiCameraCircularIO(camera, seconds = 10)
+    camera.start_recording( vidStream, format = 'h264') #stream
+    #try:
+    while time.time() - start <= VIDLEN:
+        #camera.wait_recording( 1 )
+        if write_now():
+            #camera.wait_recording(10)
+            write_video( threadName, vidStream )
+    #finally:
+    camera.stop_recording()
+    print '%s\t%s\tStop Recording' %  ( time.ctime( time.time() ) , threadName )                              
 
 
 '''
@@ -60,95 +91,82 @@ Finds the worm
 TODO: Optimization 
 TODO: sampling var, but realistically RPi won't be able to do this fast enough for us to specify this unless it's > 3 seconds
 '''
-
-def findWorm(threadName, stream):
+def findWorm(threadName, camera):
     # Keep doing this until VIDEO is DONE
     ref = None
     colr = None
     rowdist = []
     coldist = []
-
-    
-    while time.time() - START <= 20: #!EXITF :     
-        
-        if exitFlag:
-            thread.exit()
-        
-        # Capture image from cameraObj
-        #        picStream = io.BytesIO()
-        #        print '%s\t%s\tpicStream' % ( time.ctime( time.time() ), threadName )
-        #        camObj.capture( picStream, format = 'jpeg', use_video_port = True )
-        #        print '%s\tpast cam obj' % ( time.ctime( time.time() ), threadName )
-        streamLock.acquire()
-        stream.seek(0)
-        
+    print V
+    start = time.time()
+    stillStream = io.BytesIO()        
+    while time.time() - start <= VIDLEN:
+        print '%s\t%s\tcapture' %  ( time.ctime( time.time() ) , threadName )
+        camera.capture( stillStream, 'jpeg', use_video_port = True )
+        stillStream.seek(0)   
+        print '%s\t%s\tstream\t%s' %  ( time.ctime( time.time() ) , threadName, str(stillStream) )
         if ref is None: #then camera has moved or we just got started
             
-            if V: "New Reference frame acquired"
+            if V: print '%s\t%s\tHave new reference' %  ( time.ctime( time.time() ) , threadName )
             #print stream
-            ref = rgb2grayV( Image.open( stream ) )#.astype(float) #get image, mk gray, as float
-            streamLock.release()
+            ref = rgb2grayV( Image.open( stillStream ) )#.astype(float) #get image, mk gray, as float
+            #stillStream.flush()
+            #if P:
+                #ip = plt.imshow(ref, cmap = 'gray')
+                #ip.set_clim(np.min(ref), np.max(ref))
+                #plt.show()
         else: #we already have a reference!
-            if V: "New Comparison frame acquired"
-            comp = rgb2grayV( Image.open( stream ) )#.astype(float)
+            comp = rgb2grayV( Image.open( stillStream ) )#.astype(float)
+            #stillStream.flush()
+            if V: print '%s\t%s\tHave comparison' %  ( time.ctime( time.time() ) , threadName )
+
             sub = comp - ref
-            streamLock.release()
+            if V: print '%s\t%s\tHave subtraction' %  ( time.ctime( time.time() ) , threadName )
             #Find the maximum gray scale values -- corresponds to COMPARISON WORM (note: returns an array)
-            col, row = np.nonzero( sub == sub.max() )
+            
+
+            col, row = np.nonzero( sub == np.max(sub) )
+            if V: print '%s\t%s\tHave maximum\t%d\trow:%d\tcol:%d' %  ( time.ctime( time.time() ) , threadName, np.max(sub), row[0], col[0] )
             
             # Find the minimum gray scale values -- corresponds to REFERENCE WORM
             if colr is None: #only process the reference image first time 'round
-                if V: print 'Getting Maximum'
-                colr, rowr = np.nonzero( sub == sub.min() )
+                colr, rowr = np.nonzero( sub == np.min(sub) )
+                if V: print '%s\t%s\tHave minimum\t%d\trow:%d\tcol:%d' %  ( time.ctime( time.time() ) , threadName, np.min(sub), rowr[0], colr[0] )
+
+
+            if P:
+                camera.stop_preview()
+                try:
+                    #ip = plt.imshow(sub, cmap = 'gray')
+                    plt.imshow(sub, cmap = 'gray')
+                    #ip.set_clim(np.min(sub), np.max(sub))
+                    plt.scatter(row, col, c = 'r')
+                    plt.scatter(rowr, colr, c = 'c')
+                    plt.show()                    
+                finally:
+                    camera.start_preview()
 
             # For 'windowing' only consider a window of distances when making decision about whether or not to move
                 #smoothes the location of the worm 
             coldist.append(colr[0] - col[0]) #arrays cuz np.nonzero returns all indices of maxima/minima in image
             rowdist.append(rowr[0] - row[0])
+            if V: print '%s\t%s\tHave appended distance arrays' %  ( time.ctime( time.time() ) , threadName )
             
             if len(coldist) > WINDOW:
                 #coldist.pop(0)
                 #rowdist.pop(0)
                 coldist = coldist[1:]
                 rowdist = rowdist[1:]
+                if V: print '%s\t%s\tHave sliced distance arrays' %  ( time.ctime( time.time() ) , threadName )
             
             mcol = np.mean(coldist)
             mrow = np.mean(rowdist)
+            if V: print '%s\t%s\tHave mean distances:\trow:%d\tcol:%d' %  ( time.ctime( time.time() ) , threadName, mrow, mcol )
             
             if abs(mrow) > BOUNDROW or abs(mcol) > BOUNDCOL:
-                print 'Move! row: %d \t col: %d' % ( rowdist[ len( rowdist ) - 1 ] , coldist [ len( coldist ) - 1 ] ) 
+                print '%s\t%s\tMove! row: %d \t col: %d' % ( time.ctime( time.time() ) , threadName , rowdist[ len( rowdist ) - 1 ] , coldist [ len( coldist ) - 1 ] ) 
                 ref = None; #triggers getting new reference image
                 colr = None; #triggers getting new reference row/col position
-            
-    #finally:
-     #   print 'have worm'
-'''
-def writeVid(threadName, stream, delay):
-    while time.time() - START <= VIDLEN:
-        print '%s\t%s\twriting vid' % ( time.ctime( time.time() ), threadName )
-        with stream.lock:
-            print '%s\t%s\tpast stream.lock' % ( time.ctime( time.time() ), threadName )
-            for frame in stream.frames:
-                print '%s\t%s\tframe' % ( time.ctime( time.time() ), threadName )
-                if frame.header:
-                    print '%s\t%s\tframe.header' % ( time.ctime( time.time() ), threadName )
-                    stream.seek(frame.position)
-                    print '%s\t%s\tpast stream seek' % ( time.ctime( time.time() ), threadName )
-                    break
-
-        with io.open(VIDNAME, 'wb') as output:
-            print '%s\t%s\t past io.open' % ( time.ctime ( time.time() ), threadName )
-            output.write( stream.read() )
-            print '%s\t%s\tpast io write' % ( time.ctime( time.time() ), threadName )
-        
-        print '%s\t%s\tsleeping'  % ( time.ctime( time.time() ), threadName )
-        time.sleep(delay)
-               
-    exitFlag = 1
-'''
-#def capFrames(threadName, stream, delay):
-#    while time.time() <= VIDLEN:
-        
 
 ### Helper helpers
 def rgb2grayV(I):
@@ -159,27 +177,21 @@ def rgb2grayV(I):
 
 
 ### Actual main method
-streamLock = threading.Lock()
-with picamera.PiCamera() as camera:
+############ RUN ###############
 
-    camera.resolution = (1080, 1080)
-    camera.framerate = 25
-    camera.start_recording('test.h264')
-        # Capture image from cameraObj
-    picStream = io.BytesIO()
-#    print '%s\t%s\tpicStream' % ( time.ctime( time.time() ), threadName )
+#with picamera.PiCamera() as camera:
+camera = picamera.PiCamera() 
+video = videoThread( 1, 'video', camera )
+stills = stillThread( 2, 'still', camera )
+camera.resolution = VIDRES
+camera.framerate = VIDFR
 
-    camera.capture( picStream, format = 'jpeg', use_video_port = True )    
-    wormT = wormThread(1, 'wormworm',  picStream  ) 
-    try:
-        
-        wormT.start()
-        while time.time() - START < VIDLEN:
-            camera.capture( picStream, format = 'jpeg', use_video_port = True )
-            time.sleep(2)
-    except Exception as e:
-        print str(e)
- 
-    finally:
+try:
+    video.start()
+    stills.start()
+except Exception as e:
+    print str(e)
+
+finally:
+    if camera.recording:
         camera.stop_recording()
-    
