@@ -3,9 +3,14 @@ from easyEBB import easyEBB
 
 e = easyEBB()
 
+'''
 e.stepM(1000,300,0)
 e.stepM(1000,0,300)
 e.stepM(1000,-300,0)
 e.stepM(1000, 0, -300)
+'''
+
+e.stepM(100, 5, 0)
+
 
 e.closeSerial()

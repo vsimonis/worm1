@@ -9,6 +9,8 @@ import serial
 import time
 import eggbot_scanlinux
 
+V = False
+
 class easyEBB:
     def __init__( self ):
         self.actualSerialPort = ''
@@ -18,7 +20,9 @@ class easyEBB:
         """
         Opens a serial connection to the EiBotBoard
         """
+        if V: print 'serial open'
         self.serialPort = self.getSerialPort()
+        if V: print 'serial port: %s' % str(self.serialPort)
         if self.serialPort == None:
             print "Unable to find serial port"
 
@@ -86,8 +90,8 @@ class easyEBB:
         try:
             self.serialPort.write( cmd ) 
             response = self.serialPort.readlines()
-            for line in response:
-                print line
+#            for line in response:
+#                print line
         except:
             print "fail"
             pass
@@ -104,7 +108,7 @@ class easyEBB:
         """
         Disables both motors on EiBotBoard
         """
-        self.doCommand('EM,1,1\r')
+        self.doCommand('EM,5,5\r') #1 step mode
         
     def stepM(self, duration, x, y):
         """

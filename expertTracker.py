@@ -14,18 +14,19 @@ import random
 ## General
 V = True #If true, tons of print statements
 P = False #If true, display matplotlib plots, need to be running startX
+R = False
 
 START = time.time()
 
 VIDLEN = 10
 VIDRES = (1080,1080)
-VIDFR = 25
+VIDFR = 15
 
 ## Worm-finding
 WINDOW = 10
 VIDNAME = 'mttest1.h264' 
-BOUNDROW = 200
-BOUNDCOL = 200
+BOUNDROW = 400
+BOUNDCOL = 400
 
 '''
 Runs the worm thread
@@ -72,16 +73,14 @@ def write_now( ):
 def recordVideo ( threadName, camera ):
     start = time.time()
     print '%s\t%s\tCamera\t%s' %  ( time.ctime( time.time() ) , threadName, str(camera) )
-    camera.start_preview()
+    if not V: camera.start_preview()
     vidStream = picamera.PiCameraCircularIO(camera, seconds = 10)
     camera.start_recording( vidStream, format = 'h264') #stream
     #try:
     while time.time() - start <= VIDLEN:
-        #camera.wait_recording( 1 )
-        if write_now():
-            #camera.wait_recording(10)
-            write_video( threadName, vidStream )
-    #finally:
+        camera.wait_recording( 5 )
+        print '%s\t%s\twrite now' % ( time.ctime(time.time() ), threadName)
+        write_video( threadName, vidStream )
     camera.stop_recording()
     print '%s\t%s\tStop Recording' %  ( time.ctime( time.time() ) , threadName )                              
 
@@ -92,32 +91,41 @@ TODO: Optimization
 TODO: sampling var, but realistically RPi won't be able to do this fast enough for us to specify this unless it's > 3 seconds
 '''
 def findWorm(threadName, camera):
+    if not R: 
+        camera.start_preview()
+        time.sleep(2)
+
     # Keep doing this until VIDEO is DONE
     ref = None
     colr = None
     rowdist = []
     coldist = []
-    print V
+    #print V
     start = time.time()
+
     stillStream = io.BytesIO()        
     while time.time() - start <= VIDLEN:
         print '%s\t%s\tcapture' %  ( time.ctime( time.time() ) , threadName )
-        camera.capture( stillStream, 'jpeg', use_video_port = True )
-        stillStream.seek(0)   
-        print '%s\t%s\tstream\t%s' %  ( time.ctime( time.time() ) , threadName, str(stillStream) )
+        camera.capture( stillStream, format = 'jpeg')#, use_video_port = True)
+        stillStream.seek(0)
+    if not R: 
+        camera.stop_preview()
+'''   
         if ref is None: #then camera has moved or we just got started
             
             if V: print '%s\t%s\tHave new reference' %  ( time.ctime( time.time() ) , threadName )
             #print stream
             ref = rgb2grayV( Image.open( stillStream ) )#.astype(float) #get image, mk gray, as float
-            #stillStream.flush()
+            stillStream.seek(0)
+            stillStream.truncate()
             #if P:
                 #ip = plt.imshow(ref, cmap = 'gray')
                 #ip.set_clim(np.min(ref), np.max(ref))
                 #plt.show()
         else: #we already have a reference!
             comp = rgb2grayV( Image.open( stillStream ) )#.astype(float)
-            #stillStream.flush()
+            stillStream.seek(0)
+            stillStream.truncate()
             if V: print '%s\t%s\tHave comparison' %  ( time.ctime( time.time() ) , threadName )
 
             sub = comp - ref
@@ -167,6 +175,8 @@ def findWorm(threadName, camera):
                 print '%s\t%s\tMove! row: %d \t col: %d' % ( time.ctime( time.time() ) , threadName , rowdist[ len( rowdist ) - 1 ] , coldist [ len( coldist ) - 1 ] ) 
                 ref = None; #triggers getting new reference image
                 colr = None; #triggers getting new reference row/col position
+'''
+#if not R: camera.stop_preview()
 
 ### Helper helpers
 def rgb2grayV(I):
@@ -187,7 +197,7 @@ camera.resolution = VIDRES
 camera.framerate = VIDFR
 
 try:
-    video.start()
+    if R: video.start()
     stills.start()
 except Exception as e:
     print str(e)
@@ -195,3 +205,4 @@ except Exception as e:
 finally:
     if camera.recording:
         camera.stop_recording()
+    camera.close()
